@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"net/netip"
+	"sync"
 
 	"github.com/sagernet/sing-box/adapter"
 	sbOutbound "github.com/sagernet/sing-box/adapter/outbound"
@@ -31,6 +32,8 @@ type OriginDirectOutbound struct {
 	connectionManager adapter.ConnectionManager
 	baseOptions       option.DialerOptions
 	useOrigin         bool
+	staticDialer      N.Dialer
+	dialerCache       sync.Map
 }
 
 var (
@@ -49,14 +52,22 @@ func newOriginDirectOutbound(ctx context.Context, _ adapter.Router, logger log.C
 	if connectionManager == nil {
 		return nil, fmt.Errorf("missing connection manager")
 	}
-	return &OriginDirectOutbound{
+	outbound := &OriginDirectOutbound{
 		Adapter:           sbOutbound.NewAdapterWithDialerOptions(originDirectOutboundType, tag, []string{N.NetworkTCP, N.NetworkUDP}, options.DialerOptions),
 		ctx:               ctx,
 		logger:            logger,
 		connectionManager: connectionManager,
 		baseOptions:       options.DialerOptions,
 		useOrigin:         options.UseOrigin,
-	}, nil
+	}
+	if bindAddr, ok := bindAddrFromOptions(options.DialerOptions); ok || !options.UseOrigin {
+		staticDialer, err := outbound.buildDialer(bindAddr, ok)
+		if err != nil {
+			return nil, err
+		}
+		outbound.staticDialer = staticDialer
+	}
+	return outbound, nil
 }
 
 func (o *OriginDirectOutbound) DialContext(ctx context.Context, network string, destination M.Socksaddr) (net.Conn, error) {
@@ -106,10 +117,32 @@ func (o *OriginDirectOutbound) NewPacketConnectionEx(ctx context.Context, conn N
 }
 
 func (o *OriginDirectOutbound) newDialerFromMetadata(metadata adapter.InboundContext, localAddr net.Addr) (N.Dialer, error) {
+	if o.staticDialer != nil {
+		return o.staticDialer, nil
+	}
+	bindAddr, ok := o.resolveBindAddr(metadata, localAddr)
+	cacheKey := "<default>"
+	if ok {
+		cacheKey = bindAddr.String()
+	}
+	if cachedDialer, loaded := o.dialerCache.Load(cacheKey); loaded {
+		return cachedDialer.(N.Dialer), nil
+	}
+	newDialer, err := o.buildDialer(bindAddr, ok)
+	if err != nil {
+		return nil, err
+	}
+	if cachedDialer, loaded := o.dialerCache.LoadOrStore(cacheKey, newDialer); loaded {
+		return cachedDialer.(N.Dialer), nil
+	}
+	return newDialer, nil
+}
+
+func (o *OriginDirectOutbound) buildDialer(bindAddr netip.Addr, ok bool) (N.Dialer, error) {
 	dialerOptions := o.baseOptions
-	if bindAddr, ok := o.resolveBindAddr(metadata, localAddr); ok {
-		dialerOptions.Inet4BindAddress = nil
-		dialerOptions.Inet6BindAddress = nil
+	dialerOptions.Inet4BindAddress = nil
+	dialerOptions.Inet6BindAddress = nil
+	if ok {
 		bind := badoption.Addr(bindAddr)
 		if bindAddr.Is4() {
 			dialerOptions.Inet4BindAddress = &bind
