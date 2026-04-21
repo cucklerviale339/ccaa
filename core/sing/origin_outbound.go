@@ -172,6 +172,14 @@ func (o *OriginDirectOutbound) resolveBindAddr(metadata adapter.InboundContext, 
 		return netip.Addr{}, false
 	}
 	local := M.SocksaddrFromNet(localAddr).Unwrap()
+	if !local.Addr.IsValid() || local.Addr.IsUnspecified() {
+		return netip.Addr{}, false
+	}
+	// Some QUIC stream wrappers misuse LocalAddr() for the requested target address.
+	// When that happens, binding to it would be wrong; ignore and fall back.
+	if local == metadata.Destination {
+		return netip.Addr{}, false
+	}
 	if local.Addr.IsValid() && !local.Addr.IsUnspecified() {
 		return local.Addr, true
 	}
