@@ -479,16 +479,21 @@ func applyInboundUsers(in *option.Inbound, info *panel.NodeInfo, users []panel.U
 }
 
 func (b *Sing) rebuildInbound(tag string) error {
+	b.boxAccess.Lock()
+	defer b.boxAccess.Unlock()
 	stateValue, ok := b.nodeStates.Load(tag)
 	if !ok {
 		return fmt.Errorf("node state not found: %s", tag)
 	}
 	state := stateValue.(*NodeState)
+	b.users.mapLock.RLock()
+	users := append([]panel.UserInfo(nil), state.users...)
+	b.users.mapLock.RUnlock()
 	c, err := getInboundOptions(tag, state.info, state.config)
 	if err != nil {
 		return err
 	}
-	if err = applyInboundUsers(&c, state.info, state.users); err != nil {
+	if err = applyInboundUsers(&c, state.info, users); err != nil {
 		return err
 	}
 	in := b.box.Inbound()
@@ -512,45 +517,54 @@ func (b *Sing) rebuildInbound(tag string) error {
 }
 
 func (b *Sing) AddNode(tag string, info *panel.NodeInfo, config *conf.Options) error {
+	b.boxAccess.Lock()
+	defer b.boxAccess.Unlock()
+
+	previousMinTraffic, hadMinTraffic := b.nodeReportMinTrafficBytes[tag]
+	previousState, hadState := b.nodeStates.Load(tag)
 	b.nodeReportMinTrafficBytes[tag] = config.ReportMinTraffic * 1024
 	state := &NodeState{
 		info:   info,
 		config: config,
 	}
-	if previousState, ok := b.nodeStates.Load(tag); ok {
+	if hadState {
+		b.users.mapLock.RLock()
 		state.users = append(state.users, previousState.(*NodeState).users...)
+		b.users.mapLock.RUnlock()
 	}
 	b.nodeStates.Store(tag, state)
-	c, err := getInboundOptions(tag, info, config)
-	if err != nil {
-		return err
-	}
-	if err = applyInboundUsers(&c, info, state.users); err != nil {
-		return err
-	}
-	in := b.box.Inbound()
-	err = in.Create(
-		b.ctx,
-		b.box.Router(),
-		b.logFactory.NewLogger(F.ToString("inbound/", c.Type, "[", tag, "]")),
-		tag,
-		c.Type,
-		c.Options,
-	)
-
-	if err != nil {
-		return fmt.Errorf("add inbound error: %s", err)
+	if err := b.rebuildBoxLocked(); err != nil {
+		if hadState {
+			b.nodeStates.Store(tag, previousState)
+		} else {
+			b.nodeStates.Delete(tag)
+		}
+		if hadMinTraffic {
+			b.nodeReportMinTrafficBytes[tag] = previousMinTraffic
+		} else {
+			delete(b.nodeReportMinTrafficBytes, tag)
+		}
+		return fmt.Errorf("rebuild sing-box error: %s", err)
 	}
 	return nil
 }
 
 func (b *Sing) DelNode(tag string) error {
+	b.boxAccess.Lock()
+	defer b.boxAccess.Unlock()
+
+	previousState, hadState := b.nodeStates.Load(tag)
+	previousMinTraffic, hadMinTraffic := b.nodeReportMinTrafficBytes[tag]
 	b.nodeStates.Delete(tag)
 	delete(b.nodeReportMinTrafficBytes, tag)
-	in := b.box.Inbound()
-	err := in.Remove(tag)
-	if err != nil {
-		return fmt.Errorf("delete inbound error: %s", err)
+	if err := b.rebuildBoxLocked(); err != nil {
+		if hadState {
+			b.nodeStates.Store(tag, previousState)
+		}
+		if hadMinTraffic {
+			b.nodeReportMinTrafficBytes[tag] = previousMinTraffic
+		}
+		return fmt.Errorf("rebuild sing-box error: %s", err)
 	}
 	return nil
 }

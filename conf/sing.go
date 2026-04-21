@@ -37,6 +37,8 @@ type SingOptions struct {
 	SniffOverrideDestination bool                   `json:"SniffOverrideDestination"`
 	EnableDNS                bool                   `json:"EnableDNS"`
 	DomainStrategy           option.DomainStrategy  `json:"DomainStrategy"`
+	AutoSendThroughOrigin    bool                   `json:"AutoSendThroughOrigin"`
+	EnableSameTagOutbound    bool                   `json:"EnableSameTagOutbound"`
 	FallBackConfigs          *FallBackConfigForSing `json:"FallBackConfigs"`
 	Multiplex                *MultiplexConfig       `json:"MultiplexConfig"`
 }
@@ -76,6 +78,8 @@ func NewSingOptions() *SingOptions {
 		TCPFastOpen:              false,
 		SniffEnabled:             true,
 		SniffOverrideDestination: true,
+		AutoSendThroughOrigin:    true,
+		EnableSameTagOutbound:    true,
 		FallBackConfigs:          &FallBackConfigForSing{},
 		Multiplex:                &MultiplexConfig{},
 	}
