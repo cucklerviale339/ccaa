@@ -19,10 +19,12 @@ import (
 
 func newSingContext() context.Context {
 	ctx := context.Background()
+	outboundRegistry := include.OutboundRegistry()
+	registerOriginDirectOutbound(outboundRegistry)
 	return box.Context(
 		ctx,
 		include.InboundRegistry(),
-		include.OutboundRegistry(),
+		outboundRegistry,
 		include.EndpointRegistry(),
 		include.DNSTransportRegistry(),
 		include.ServiceRegistry(),
@@ -155,7 +157,7 @@ func (b *Sing) rebuildBoxLocked() error {
 }
 
 func buildNodeOutbound(tag string, config *conf.Options) (*option.Outbound, *option.Rule, error) {
-	inet4, inet6, ok, err := resolveOutboundBindAddress(config)
+	options, ok, err := resolveOriginDirectOptions(config)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -164,14 +166,9 @@ func buildNodeOutbound(tag string, config *conf.Options) (*option.Outbound, *opt
 	}
 
 	outbound := &option.Outbound{
-		Type: C.TypeDirect,
-		Tag:  tag,
-		Options: &option.DirectOutboundOptions{
-			DialerOptions: option.DialerOptions{
-				Inet4BindAddress: inet4,
-				Inet6BindAddress: inet6,
-			},
-		},
+		Type:    originDirectOutboundType,
+		Tag:     tag,
+		Options: options,
 	}
 	rule := &option.Rule{
 		DefaultOptions: option.DefaultRule{
@@ -189,29 +186,35 @@ func buildNodeOutbound(tag string, config *conf.Options) (*option.Outbound, *opt
 	return outbound, rule, nil
 }
 
-func resolveOutboundBindAddress(config *conf.Options) (inet4 *badoption.Addr, inet6 *badoption.Addr, ok bool, err error) {
+func resolveOriginDirectOptions(config *conf.Options) (*OriginDirectOutboundOptions, bool, error) {
 	if config == nil || config.SingOptions == nil || !config.SingOptions.EnableSameTagOutbound {
-		return nil, nil, false, nil
+		return nil, false, nil
 	}
+	options := &OriginDirectOutboundOptions{}
 	bindIP := strings.TrimSpace(config.SendIP)
-	if bindIP == "" || bindIP == "0.0.0.0" || bindIP == "::" {
-		if !config.SingOptions.AutoSendThroughOrigin {
-			return nil, nil, false, nil
-		}
+	switch bindIP {
+	case "", "0.0.0.0", "::":
 		listenIP := strings.TrimSpace(config.ListenIP)
-		if listenIP == "" || listenIP == "0.0.0.0" || listenIP == "::" {
-			return nil, nil, false, nil
+		switch listenIP {
+		case "", "0.0.0.0", "::":
+			options.UseOrigin = config.SingOptions.AutoSendThroughOrigin
+			if !options.UseOrigin {
+				return nil, false, nil
+			}
+			return options, true, nil
+		default:
+			bindIP = listenIP
 		}
-		bindIP = listenIP
 	}
-
 	addr, err := netip.ParseAddr(bindIP)
 	if err != nil {
-		return nil, nil, false, fmt.Errorf("parse send ip error: %s", err)
+		return nil, false, fmt.Errorf("parse send ip error: %s", err)
 	}
 	bindAddr := badoption.Addr(addr)
 	if addr.Is4() {
-		return &bindAddr, nil, true, nil
+		options.Inet4BindAddress = &bindAddr
+		return options, true, nil
 	}
-	return nil, &bindAddr, true, nil
+	options.Inet6BindAddress = &bindAddr
+	return options, true, nil
 }
