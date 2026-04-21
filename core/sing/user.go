@@ -5,6 +5,7 @@ import (
 
 	"github.com/InazumaV/V2bX/api/panel"
 	"github.com/InazumaV/V2bX/common/counter"
+	"github.com/InazumaV/V2bX/common/format"
 	"github.com/InazumaV/V2bX/core"
 )
 
@@ -17,7 +18,7 @@ func (b *Sing) AddUsers(p *core.AddUsersParams) (added int, err error) {
 
 	b.users.mapLock.Lock()
 	for i := range p.Users {
-		b.users.uidMap[p.Users[i].Uuid] = p.Users[i].Id
+		b.users.uidMap[format.UserTag(p.Tag, p.Users[i].Uuid)] = p.Users[i].Id
 	}
 	mergedUsers := make([]panel.UserInfo, 0, len(state.users)+len(p.Users))
 	seen := make(map[string]panel.UserInfo, len(state.users)+len(p.Users))
@@ -70,6 +71,7 @@ func (b *Sing) GetUserTrafficSlice(tag string, reset bool) ([]panel.UserTraffic,
 		c := v.(*counter.TrafficCounter)
 		c.Counters.Range(func(key, value interface{}) bool {
 			uuid := key.(string)
+			userTag := format.UserTag(tag, uuid)
 			traffic := value.(*counter.TrafficStorage)
 			up := traffic.UpCounter.Load()
 			down := traffic.DownCounter.Load()
@@ -78,12 +80,12 @@ func (b *Sing) GetUserTrafficSlice(tag string, reset bool) ([]panel.UserTraffic,
 					traffic.UpCounter.Store(0)
 					traffic.DownCounter.Store(0)
 				}
-				if b.users.uidMap[uuid] == 0 {
+				if b.users.uidMap[userTag] == 0 {
 					c.Delete(uuid)
 					return true
 				}
 				trafficSlice = append(trafficSlice, panel.UserTraffic{
-					UID:      b.users.uidMap[uuid],
+					UID:      b.users.uidMap[userTag],
 					Upload:   up,
 					Download: down,
 				})
@@ -112,7 +114,7 @@ func (b *Sing) DelUsers(users []panel.UserInfo, tag string, _ *panel.NodeInfo) e
 			c := v.(*counter.TrafficCounter)
 			c.Delete(users[i].Uuid)
 		}
-		delete(b.users.uidMap, users[i].Uuid)
+		delete(b.users.uidMap, format.UserTag(tag, users[i].Uuid))
 		deleted[users[i].Uuid] = struct{}{}
 	}
 
