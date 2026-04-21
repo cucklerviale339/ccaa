@@ -104,7 +104,6 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 			Enabled:    true,
 			ShortID:    []string{v.TlsSettings.ShortId},
 			PrivateKey: v.TlsSettings.PrivateKey,
-			Xver:       uint8(v.TlsSettings.Xver),
 			Handshake: option.InboundRealityHandshakeOptions{
 				ServerOptions: option.ServerOptions{
 					Server:     dest,
@@ -394,10 +393,139 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 	return in, nil
 }
 
+func applyInboundUsers(in *option.Inbound, info *panel.NodeInfo, users []panel.UserInfo) error {
+	switch options := in.Options.(type) {
+	case *option.VLESSInboundOptions:
+		options.Users = make([]option.VLESSUser, len(users))
+		for i := range users {
+			options.Users[i] = option.VLESSUser{
+				Name: users[i].Uuid,
+				Flow: info.VAllss.Flow,
+				UUID: users[i].Uuid,
+			}
+		}
+	case *option.VMessInboundOptions:
+		options.Users = make([]option.VMessUser, len(users))
+		for i := range users {
+			options.Users[i] = option.VMessUser{
+				Name: users[i].Uuid,
+				UUID: users[i].Uuid,
+			}
+		}
+	case *option.ShadowsocksInboundOptions:
+		originalUsers := options.Users
+		options.Users = make([]option.ShadowsocksUser, 0, len(users)+len(originalUsers))
+		if len(originalUsers) > 0 {
+			options.Users = append(options.Users, originalUsers[0])
+		}
+		for i := range users {
+			password := users[i].Uuid
+			switch info.Shadowsocks.Cipher {
+			case "2022-blake3-aes-128-gcm":
+				password = base64.StdEncoding.EncodeToString([]byte(password[:16]))
+			case "2022-blake3-aes-256-gcm":
+				password = base64.StdEncoding.EncodeToString([]byte(password[:32]))
+			}
+			options.Users = append(options.Users, option.ShadowsocksUser{
+				Name:     users[i].Uuid,
+				Password: password,
+			})
+		}
+	case *option.TrojanInboundOptions:
+		options.Users = make([]option.TrojanUser, len(users))
+		for i := range users {
+			options.Users[i] = option.TrojanUser{
+				Name:     users[i].Uuid,
+				Password: users[i].Uuid,
+			}
+		}
+	case *option.TUICInboundOptions:
+		options.Users = make([]option.TUICUser, len(users))
+		for i := range users {
+			options.Users[i] = option.TUICUser{
+				Name:     users[i].Uuid,
+				UUID:     users[i].Uuid,
+				Password: users[i].Uuid,
+			}
+		}
+	case *option.HysteriaInboundOptions:
+		options.Users = make([]option.HysteriaUser, len(users))
+		for i := range users {
+			options.Users[i] = option.HysteriaUser{
+				Name:       users[i].Uuid,
+				AuthString: users[i].Uuid,
+			}
+		}
+	case *option.Hysteria2InboundOptions:
+		options.Users = make([]option.Hysteria2User, len(users))
+		for i := range users {
+			options.Users[i] = option.Hysteria2User{
+				Name:     users[i].Uuid,
+				Password: users[i].Uuid,
+			}
+		}
+	case *option.AnyTLSInboundOptions:
+		options.Users = make([]option.AnyTLSUser, len(users))
+		for i := range users {
+			options.Users[i] = option.AnyTLSUser{
+				Name:     users[i].Uuid,
+				Password: users[i].Uuid,
+			}
+		}
+	default:
+		return fmt.Errorf("unsupported inbound options type: %T", in.Options)
+	}
+	return nil
+}
+
+func (b *Sing) rebuildInbound(tag string) error {
+	stateValue, ok := b.nodeStates.Load(tag)
+	if !ok {
+		return fmt.Errorf("node state not found: %s", tag)
+	}
+	state := stateValue.(*NodeState)
+	c, err := getInboundOptions(tag, state.info, state.config)
+	if err != nil {
+		return err
+	}
+	if err = applyInboundUsers(&c, state.info, state.users); err != nil {
+		return err
+	}
+	in := b.box.Inbound()
+	if _, found := in.Get(tag); found {
+		if err = in.Remove(tag); err != nil {
+			return fmt.Errorf("delete inbound error: %s", err)
+		}
+	}
+	err = in.Create(
+		b.ctx,
+		b.box.Router(),
+		b.logFactory.NewLogger(F.ToString("inbound/", c.Type, "[", tag, "]")),
+		tag,
+		c.Type,
+		c.Options,
+	)
+	if err != nil {
+		return fmt.Errorf("add inbound error: %s", err)
+	}
+	return nil
+}
+
 func (b *Sing) AddNode(tag string, info *panel.NodeInfo, config *conf.Options) error {
 	b.nodeReportMinTrafficBytes[tag] = config.ReportMinTraffic * 1024
+	state := &NodeState{
+		info:   info,
+		config: config,
+	}
+	if previousState, ok := b.nodeStates.Load(tag); ok {
+		state.users = append(state.users, previousState.(*NodeState).users...)
+	}
+	b.nodeStates.Store(tag, state)
 	c, err := getInboundOptions(tag, info, config)
 	if err != nil {
+		return err
+	}
+	if err = applyInboundUsers(&c, info, state.users); err != nil {
 		return err
 	}
 	in := b.box.Inbound()
@@ -417,6 +545,8 @@ func (b *Sing) AddNode(tag string, info *panel.NodeInfo, config *conf.Options) e
 }
 
 func (b *Sing) DelNode(tag string) error {
+	b.nodeStates.Delete(tag)
+	delete(b.nodeReportMinTrafficBytes, tag)
 	in := b.box.Inbound()
 	err := in.Remove(tag)
 	if err != nil {

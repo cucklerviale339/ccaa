@@ -6,6 +6,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/InazumaV/V2bX/api/panel"
 	"github.com/sagernet/sing-box/include"
 	"github.com/sagernet/sing-box/log"
 
@@ -32,11 +33,18 @@ type Sing struct {
 	logFactory                log.Factory
 	users                     *UserMap
 	nodeReportMinTrafficBytes map[string]int64
+	nodeStates                sync.Map // map[string]*NodeState
 }
 
 type UserMap struct {
 	uidMap  map[string]int
 	mapLock sync.RWMutex
+}
+
+type NodeState struct {
+	info   *panel.NodeInfo
+	config *conf.Options
+	users  []panel.UserInfo
 }
 
 func init() {
@@ -84,7 +92,7 @@ func New(c *conf.CoreConfig) (vCore.Core, error) {
 	}
 	b.Router().AppendTracker(hs)
 	return &Sing{
-		ctx:        b.Router().GetCtx(),
+		ctx:        ctx,
 		box:        b,
 		hookServer: hs,
 		router:     b.Router(),
@@ -93,6 +101,7 @@ func New(c *conf.CoreConfig) (vCore.Core, error) {
 			uidMap: make(map[string]int),
 		},
 		nodeReportMinTrafficBytes: make(map[string]int64),
+		nodeStates:                sync.Map{},
 	}, nil
 }
 
