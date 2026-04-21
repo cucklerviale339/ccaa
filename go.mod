@@ -355,3 +355,4 @@ require (
 )
 
 replace github.com/xtls/xray-core v1.260327.0 => github.com/jiasu9527/xray-core v1.260327.0-jiasu3
+replace github.com/sagernet/sing-quic => ./third_party/sing-quic
