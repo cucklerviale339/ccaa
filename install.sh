@@ -10,6 +10,7 @@ INSTALL_ROOT="/usr/local/V2bX"
 CONFIG_ROOT="/etc/V2bX"
 SERVICE_FILE="/etc/systemd/system/V2bX.service"
 BUILD_TAGS="sing xray hysteria2 with_quic with_grpc with_utls with_wireguard with_acme with_gvisor"
+CACHE_ROOT="/var/cache/V2bX"
 CONFIG_WAS_PRESENT=0
 
 log() {
@@ -131,19 +132,31 @@ EOF
 }
 
 install_binary() {
-  log "building V2bX from ${TARGET_REF}"
+  local build_log
+  build_log="$(mktemp /tmp/v2bx-build.XXXXXX.log)"
+
+  log "building V2bX from ${TARGET_REF}, this may take a few minutes on first install"
   mkdir -p "$INSTALL_ROOT"
+  mkdir -p "${CACHE_ROOT}/go-build" "${CACHE_ROOT}/go-mod"
   (
     cd "$WORKDIR"
     export PATH="/usr/local/go/bin:$PATH"
     export GOTOOLCHAIN=local
     export CGO_ENABLED=0
     export GOEXPERIMENT=jsonv2
-    go build -v -o "${INSTALL_ROOT}/V2bX" \
+    export GOCACHE="${CACHE_ROOT}/go-build"
+    export GOMODCACHE="${CACHE_ROOT}/go-mod"
+    go build -o "${INSTALL_ROOT}/V2bX" \
       -tags "${BUILD_TAGS}" \
       -trimpath \
-      -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=${TARGET_REF}' -s -w -buildid="
-  )
+      -ldflags "-X 'github.com/InazumaV/V2bX/cmd.version=${TARGET_REF}' -s -w -buildid=" \
+      >"${build_log}" 2>&1
+  ) || {
+    tail -n 80 "${build_log}" >&2 || true
+    rm -f "${build_log}"
+    fail "build failed"
+  }
+  rm -f "${build_log}"
   chmod 0755 "${INSTALL_ROOT}/V2bX"
   ln -sf "${INSTALL_ROOT}/V2bX" /usr/bin/V2bX
 }
