@@ -347,6 +347,7 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516 // indirect
 	google.golang.org/grpc v1.80.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/ns1/ns1-go.v2 v2.14.4 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
@@ -355,5 +356,6 @@ require (
 )
 
 replace github.com/xtls/xray-core v1.260327.0 => github.com/jiasu9527/xray-core v1.260327.0-jiasu3
+
 // Local sing-quic patch keeps QUIC stream LocalAddr() usable for origin-based egress binding.
 replace github.com/sagernet/sing-quic => ./third_party/sing-quic

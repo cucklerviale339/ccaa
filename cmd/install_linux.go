@@ -18,7 +18,7 @@ var (
 		Use:   "update",
 		Short: "Update V2bX version",
 		Run: func(_ *cobra.Command, _ []string) {
-			command := "bash <(curl -fsSL " + installScriptURL + ")"
+			command := "bash <(curl -Ls " + installScriptURL + ")"
 			if targetVersion != "" {
 				command += " " + shellQuote(targetVersion)
 			}
@@ -51,6 +51,7 @@ func uninstallHandle(_ *cobra.Command, _ []string) {
 	fmt.Scan(&yes)
 	if strings.ToLower(yes) != "y" {
 		fmt.Println("已取消卸载")
+		return
 	}
 	_, err := exec.RunCommandByShell("systemctl stop V2bX&&systemctl disable V2bX")
 	if err != nil {
