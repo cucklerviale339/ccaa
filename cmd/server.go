@@ -120,10 +120,12 @@ func serverHandle(_ *cobra.Command, _ []string) {
 			return
 		}
 	}
+	// clear memory
 	runtime.GC()
+	// wait exit signal
 	{
 		osSignals := make(chan os.Signal, 1)
-		signal.Notify(osSignals, syscall.SIGINT, syscall.SIGTERM)
+		signal.Notify(osSignals, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM)
 		<-osSignals
 	}
 }
