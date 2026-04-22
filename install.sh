@@ -9,6 +9,7 @@ TARGET_VERSION="${1:-$DEFAULT_VERSION}"
 INSTALL_ROOT="/usr/local/V2bX"
 CONFIG_ROOT="/etc/V2bX"
 SERVICE_FILE="/etc/systemd/system/V2bX.service"
+MANAGEMENT_SCRIPT_URL="https://raw.githubusercontent.com/cucklerviale339/ccaa/feature/source-bound-egress-jiasu3/V2bX.sh"
 CONFIG_WAS_PRESENT=0
 
 log() {
@@ -155,8 +156,13 @@ EOF
 install_binary() {
   mkdir -p "$INSTALL_ROOT"
   install -m 0755 "${WORKDIR}/V2bX" "${INSTALL_ROOT}/V2bX"
-  ln -sf "${INSTALL_ROOT}/V2bX" /usr/bin/V2bX
-  ln -sf "${INSTALL_ROOT}/V2bX" /usr/bin/v2bx
+}
+
+install_management_script() {
+  rm -f /usr/bin/V2bX /usr/bin/v2bx
+  curl -fsSL "$MANAGEMENT_SCRIPT_URL" -o /usr/bin/V2bX
+  chmod 0755 /usr/bin/V2bX
+  ln -sf /usr/bin/V2bX /usr/bin/v2bx
 }
 
 install_assets() {
@@ -213,9 +219,10 @@ main() {
   install_packages
   download_release
   install_binary
+  install_management_script
   install_assets
   reload_service
-  log "management commands: V2bX / v2bx"
+  log "management command: V2bX"
 }
 
 main "$@"
