@@ -16,7 +16,7 @@ const installScriptURL = "https://raw.githubusercontent.com/cucklerviale339/ccaa
 var (
 	updateCommand = cobra.Command{
 		Use:   "update",
-		Short: "Update V2bX version",
+		Short: "更新 V2bX 版本",
 		Run: func(_ *cobra.Command, _ []string) {
 			command := "bash <(curl -Ls " + installScriptURL + ")"
 			if targetVersion != "" {
@@ -30,13 +30,13 @@ var (
 	}
 	uninstallCommand = cobra.Command{
 		Use:   "uninstall",
-		Short: "Uninstall V2bX",
+		Short: "卸载 V2bX",
 		Run:   uninstallHandle,
 	}
 )
 
 func init() {
-	updateCommand.PersistentFlags().StringVar(&targetVersion, "version", "", "update target version")
+	updateCommand.PersistentFlags().StringVar(&targetVersion, "version", "", "指定更新目标版本")
 	command.AddCommand(&updateCommand)
 	command.AddCommand(&uninstallCommand)
 }

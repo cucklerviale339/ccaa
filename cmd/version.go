@@ -16,7 +16,7 @@ var (
 
 var versionCommand = cobra.Command{
 	Use:   "version",
-	Short: "Print version info",
+	Short: "显示版本信息",
 	Run: func(_ *cobra.Command, _ []string) {
 		showVersion()
 	},

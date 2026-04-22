@@ -11,22 +11,22 @@ import (
 var (
 	startCommand = cobra.Command{
 		Use:   "start",
-		Short: "Start V2bX service",
+		Short: "启动 V2bX 服务",
 		Run:   startHandle,
 	}
 	stopCommand = cobra.Command{
 		Use:   "stop",
-		Short: "Stop V2bX service",
+		Short: "停止 V2bX 服务",
 		Run:   stopHandle,
 	}
 	restartCommand = cobra.Command{
 		Use:   "restart",
-		Short: "Restart V2bX service",
+		Short: "重启 V2bX 服务",
 		Run:   restartHandle,
 	}
 	logCommand = cobra.Command{
 		Use:   "log",
-		Short: "Output V2bX log",
+		Short: "查看 V2bX 日志",
 		Run: func(_ *cobra.Command, _ []string) {
 			exec.RunCommandStd("journalctl", "-u", "V2bX.service", "-e", "--no-pager", "-f")
 		},

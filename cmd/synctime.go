@@ -12,13 +12,13 @@ var ntpServer string
 
 var commandSyncTime = &cobra.Command{
 	Use:   "synctime",
-	Short: "Sync time from ntp server",
+	Short: "从 NTP 服务器同步时间",
 	Args:  cobra.NoArgs,
 	Run:   synctimeHandle,
 }
 
 func init() {
-	commandSyncTime.Flags().StringVar(&ntpServer, "server", "time.apple.com", "ntp server")
+	commandSyncTime.Flags().StringVar(&ntpServer, "server", "time.apple.com", "NTP 服务器")
 	command.AddCommand(commandSyncTime)
 }
 

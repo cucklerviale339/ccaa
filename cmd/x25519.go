@@ -14,7 +14,7 @@ import (
 
 var x25519Command = cobra.Command{
 	Use:   "x25519",
-	Short: "Generate key pair for x25519 key exchange",
+	Short: "生成 x25519 密钥对",
 	Run: func(cmd *cobra.Command, args []string) {
 		executeX25519()
 	},

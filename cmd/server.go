@@ -22,7 +22,7 @@ var (
 
 var serverCommand = cobra.Command{
 	Use:   "server",
-	Short: "Run V2bX server",
+	Short: "运行 V2bX 服务端",
 	Run:   serverHandle,
 	Args:  cobra.NoArgs,
 }
@@ -30,10 +30,10 @@ var serverCommand = cobra.Command{
 func init() {
 	serverCommand.PersistentFlags().
 		StringVarP(&config, "config", "c",
-			"/etc/V2bX/config.json", "config file path")
+			"/etc/V2bX/config.json", "配置文件路径")
 	serverCommand.PersistentFlags().
 		BoolVarP(&watch, "watch", "w",
-			true, "watch file path change")
+			true, "监听配置文件变化")
 	command.AddCommand(&serverCommand)
 }
 
