@@ -156,6 +156,7 @@ install_binary() {
   mkdir -p "$INSTALL_ROOT"
   install -m 0755 "${WORKDIR}/V2bX" "${INSTALL_ROOT}/V2bX"
   ln -sf "${INSTALL_ROOT}/V2bX" /usr/bin/V2bX
+  ln -sf "${INSTALL_ROOT}/V2bX" /usr/bin/v2bx
 }
 
 install_assets() {
@@ -214,7 +215,7 @@ main() {
   install_binary
   install_assets
   reload_service
-  log "management command: V2bX"
+  log "management commands: V2bX / v2bx"
 }
 
 main "$@"
