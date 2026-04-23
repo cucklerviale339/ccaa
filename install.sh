@@ -210,6 +210,30 @@ reload_service() {
   log "V2bX installed. Edit ${CONFIG_ROOT}/config.json then start with: systemctl start V2bX"
 }
 
+show_management_usage() {
+  cat <<'EOF'
+
+V2bX 管理脚本使用方法 (兼容使用 V2bX / v2bx 执行):
+------------------------------------------
+V2bX              - 显示管理菜单 (功能更多)
+V2bX start        - 启动 V2bX
+V2bX stop         - 停止 V2bX
+V2bX restart      - 重启 V2bX
+V2bX status       - 查看 V2bX 状态
+V2bX enable       - 设置 V2bX 开机自启
+V2bX disable      - 取消 V2bX 开机自启
+V2bX log          - 查看 V2bX 日志
+V2bX x25519       - 生成 x25519 密钥
+V2bX generate     - 生成 V2bX 配置文件
+V2bX update       - 更新 V2bX
+V2bX update x.x.x - 更新 V2bX 指定版本
+V2bX install      - 安装 V2bX
+V2bX uninstall    - 卸载 V2bX
+V2bX version      - 查看 V2bX 版本
+------------------------------------------
+EOF
+}
+
 main() {
   require_root
   detect_asset_name
@@ -222,7 +246,7 @@ main() {
   install_management_script
   install_assets
   reload_service
-  log "management command: V2bX"
+  show_management_usage
 }
 
 main "$@"
