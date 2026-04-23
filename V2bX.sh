@@ -149,7 +149,7 @@ uninstall() {
     rm /usr/local/V2bX/ -rf
 
     echo ""
-    echo -e "卸载成功，如果你想删除此脚本，则退出脚本后运行 ${green}rm /usr/bin/V2bX -f${plain} 进行删除"
+    echo -e "卸载成功，如果你想删除此脚本，则退出脚本后运行 ${green}rm /usr/bin/V2bX /usr/bin/v2bx -f${plain} 进行删除"
     echo ""
 
     if [[ $# == 0 ]]; then
@@ -259,6 +259,7 @@ update_shell() {
         before_show_menu
     else
         chmod +x /usr/bin/V2bX
+        ln -sf /usr/bin/V2bX /usr/bin/v2bx
         echo -e "${green}升级脚本成功，请重新运行脚本${plain}" && exit 0
     fi
 }

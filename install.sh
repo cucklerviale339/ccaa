@@ -140,13 +140,17 @@ After=network.target nss-lookup.target
 Wants=network.target
 
 [Service]
-Type=simple
 User=root
-WorkingDirectory=/usr/local/V2bX
-ExecStart=/usr/local/V2bX/V2bX server --config /etc/V2bX/config.json
+Group=root
+Type=simple
+LimitAS=infinity
+LimitRSS=infinity
+LimitCORE=infinity
+LimitNOFILE=999999
+WorkingDirectory=/usr/local/V2bX/
+ExecStart=/usr/local/V2bX/V2bX server
 Restart=on-failure
-RestartSec=5s
-LimitNOFILE=512000
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
