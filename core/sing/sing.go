@@ -43,12 +43,27 @@ func init() {
 	vCore.RegisterCore("sing", New)
 }
 
+func resolveOriginalPath(c *conf.CoreConfig) string {
+	if c.SingConfig.OriginalPath != "" {
+		return c.SingConfig.OriginalPath
+	}
+
+	// Keep compatibility with NFU-style deployments that only write
+	// /etc/V2bX/sing_origin.json and forget to set OriginalPath.
+	const fallbackPath = "/etc/V2bX/sing_origin.json"
+	if _, err := os.Stat(fallbackPath); err == nil {
+		return fallbackPath
+	}
+
+	return ""
+}
+
 func New(c *conf.CoreConfig) (vCore.Core, error) {
 	ctx := context.Background()
 	ctx = box.Context(ctx, include.InboundRegistry(), include.OutboundRegistry(), include.EndpointRegistry(), include.DNSTransportRegistry(), include.ServiceRegistry())
 	options := option.Options{}
-	if len(c.SingConfig.OriginalPath) != 0 {
-		data, err := os.ReadFile(c.SingConfig.OriginalPath)
+	if originalPath := resolveOriginalPath(c); originalPath != "" {
+		data, err := os.ReadFile(originalPath)
 		if err != nil {
 			return nil, fmt.Errorf("read original config error: %s", err)
 		}

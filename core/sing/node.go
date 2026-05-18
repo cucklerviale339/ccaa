@@ -59,6 +59,11 @@ func getInboundOptions(tag string, info *panel.NodeInfo, c *conf.Options) (optio
 		Listen:      (*badoption.Addr)(&addr),
 		ListenPort:  uint16(info.Common.ServerPort),
 		TCPFastOpen: c.SingOptions.TCPFastOpen,
+		InboundOptions: option.InboundOptions{
+			SniffEnabled:             c.SingOptions.SniffEnabled,
+			SniffOverrideDestination: c.SingOptions.SniffOverrideDestination,
+			DomainStrategy:           c.SingOptions.DomainStrategy,
+		},
 	}
 	var multiplex *option.InboundMultiplexOptions
 	if c.SingOptions.Multiplex != nil {
