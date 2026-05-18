@@ -86,4 +86,33 @@ check_install() { [[ -f /etc/systemd/system/V2bX.service ]] || { echo -e "${red}
 open_ports() { systemctl stop firewalld.service 2>/dev/null; systemctl disable firewalld.service 2>/dev/null; ufw disable 2>/dev/null; iptables -P INPUT ACCEPT 2>/dev/null; iptables -P FORWARD ACCEPT 2>/dev/null; iptables -P OUTPUT ACCEPT 2>/dev/null; iptables -t nat -F 2>/dev/null; iptables -t mangle -F 2>/dev/null; iptables -F 2>/dev/null; iptables -X 2>/dev/null; echo -e "${green}放开防火墙端口成功！${plain}"; }
 show_usage() { echo "V2bX 后端管理脚本，不适用于 Docker"; }
 show_menu() { echo -e "${green}V2bX 后端管理脚本${plain}"; echo "0. 修改配置"; echo "1. 安装 V2bX"; echo "2. 更新 V2bX"; echo "3. 卸载 V2bX"; echo "4. 启动 V2bX"; echo "5. 停止 V2bX"; echo "6. 重启 V2bX"; echo "7. 查看 V2bX 状态"; echo "8. 查看 V2bX 日志"; echo "9. 设置 V2bX 开机自启"; echo "10. 取消 V2bX 开机自启"; echo "11. 一键安装 BBR（最新内核）"; echo "12. 查看 V2bX 版本"; echo "13. 生成 X25519 密钥"; echo "14. 升级 V2bX 维护脚本"; echo "15. 生成 V2bX 配置文件"; echo "16. 放行 VPS 的所有网络端口"; echo "执行 V2bX 或 v2bx 可打开交互菜单。"; }
-show_usage
+
+main() {
+    if [[ $# -eq 0 ]]; then
+        show_menu
+        return
+    fi
+    case "$1" in
+        0) config "$@" ;;
+        1) install "$@" ;;
+        2) update "$@" ;;
+        3) uninstall "$@" ;;
+        4) start "$@" ;;
+        5) stop "$@" ;;
+        6) restart "$@" ;;
+        7) show_status "$@" ;;
+        8) show_log "$@" ;;
+        9) enable "$@" ;;
+        10) disable "$@" ;;
+        11) install_bbr ;;
+        12) show_V2bX_version "$@" ;;
+        13) generate_x25519_key "$@" ;;
+        14) update_shell ;;
+        15) generate_config_file ;;
+        16) open_ports ;;
+        help|-h|--help) show_menu ;;
+        *) show_menu ;;
+    esac
+}
+
+main "$@"
