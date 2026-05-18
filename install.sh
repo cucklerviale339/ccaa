@@ -39,7 +39,7 @@ for file in config.json custom_inbound.json custom_outbound.json dns.json route.
   fi
 done
 
-curl -fsSL "https://raw.githubusercontent.com/${repo}/master/V2bX.sh" -o /usr/bin/V2bX
+curl -fsSL "https://raw.githubusercontent.com/${repo}/april-2026-base/V2bX.sh" -o /usr/bin/V2bX
 chmod +x /usr/bin/V2bX
 ln -sf /usr/bin/V2bX /usr/bin/v2bx
 ln -sf /usr/bin/V2bX /bin/v2bx
